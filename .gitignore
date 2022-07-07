@@ -1,0 +1,8 @@
+*.log
+*.obj
+*.sh
+*.pyc
+
+shell/*
+log/*
+.vscode/*
