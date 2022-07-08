@@ -73,7 +73,7 @@ def make_posegraph_global(data_dict, config):
                 success_matrix[t, s] = success
         with open(data_dict['legacy_succ_reg'], 'wb')as f:
             np.save(f, success_matrix)
-        logging.info(f"Pairwise Registration success matrix saved at {config['legacy_succ_reg']}") 
+        logging.info(f"Pairwise Registration success matrix saved at {data_dict['legacy_succ_reg']}") 
             
         o3d.io.write_pose_graph(save_path, pose_graph)
         logging.info(f"Posegraph before optimize saved at : {save_path}")

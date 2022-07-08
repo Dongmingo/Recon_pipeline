@@ -42,7 +42,7 @@ def set_dict(scene, args):
     config['keyframe_rate'] = args.keyframe_rate
     total_f = total_frame(args.datatype, input_dir)
     config["start_index"] = args.start_index
-    config["end_index"] = args.end_index if args.end_index != 0 else total_f-1
+    config["end_index"] = args.end_index if args.end_index != 0 and args.end_index < total_f-1 else total_f-1
     num_f = (config["end_index"]-config["start_index"]) // args.frame_jump + 1
     config['n_frames'] = num_f
     logging.info(f"Number of frames to use : {num_f}")
@@ -67,6 +67,7 @@ def set_dict(scene, args):
         'depth' : [],
         'gtpose' : [],
         'gt_pcd_v' : [],
+        'no_gt_info' : [],
     }
     
     data_dict['scene_path'] = input_dir
@@ -86,7 +87,10 @@ def set_dict(scene, args):
             data_dict['color'].append(os.path.join(color_path, str(index)+'.png'))
             data_dict['depth'].append(os.path.join(depth_path, str(index)+'.png'))
             data_dict['gt_pcd_v'].append(os.path.join(gen_folder,'gt_voxelized_pcd', str(index)+'.bin'))
-            data_dict['gtpose'].append(load_extrinsic(gt_path, config['datatype'], index))
+            gt_pose = load_extrinsic(gt_path, config['datatype'], index)
+            data_dict['gtpose'].append(gt_pose)
+            if -np.inf in gt_pose:
+                data_dict['no_gt_info'].append(index//config['frame_jump'])
     
     if args.output:
         data_dict['output'] = args.output_dir
@@ -101,39 +105,46 @@ def set_dict(scene, args):
         embed_t = np.load(f)
     data_dict['embeddings'] = embed_t[data_dict['index']]
     
-    jumpname = str(config['frame_jump'])+'_'+str(config['keyframe_rate']*config['frame_jump'])
+    se_jumpname = f"{config['start_index']}-{config['end_index']}_{config['frame_jump']}"
+    ov_se_jumpname = se_jumpname+f"_{config['overlap_th']}"
     
     obj_folder = os.path.join(gen_folder, 'obj')
     os.makedirs(obj_folder, exist_ok=True)
-    data_dict['legacy_obj'] = os.path.join(obj_folder, 'legacy_'+jumpname+'.obj')
+    data_dict['legacy_obj'] = os.path.join(obj_folder, 'legacy_'+se_jumpname+'.obj')
+    data_dict['embed_obj'] = os.path.join(obj_folder, 'embed_'+ ov_se_jumpname + ".obj")
                           
     ply_folder =os.path.join(gen_folder, 'ply')         
     os.makedirs(ply_folder, exist_ok=True)
-    data_dict['ply_template'] = os.path.join(ply_folder, jumpname+'.ply') 
+    data_dict['ply_template'] = os.path.join(ply_folder, se_jumpname+'.ply') 
     
     edge_folder = os.path.join(gen_folder, 'edge')
     os.makedirs(os.path.join(edge_folder), exist_ok=True)
-    data_dict['legacy_succ_reg'] = os.path.join(edge_folder, 'legacy_success_'+jumpname+'.bin')
-    data_dict['legacy_final_edge'] = os.path.join(edge_folder, 'legacy_final_'+jumpname+'.bin')
-    data_dict['edge_candidate'] = os.path.join(edge_folder, 'edge_candidate_'+jumpname+'.pickle')
+    data_dict['legacy_succ_edge'] = os.path.join(edge_folder, 'legacy_success_'+se_jumpname+'.bin')
+    data_dict['legacy_final_edge'] = os.path.join(edge_folder, 'legacy_final_'+se_jumpname+'.bin')
+    data_dict['embed_succ_edge'] = os.path.join(edge_folder, 'embed_success_'+ ov_se_jumpname + ".bin")
+    data_dict['embed_final_edge'] = os.path.join(edge_folder, 'embed_final_'+ ov_se_jumpname + ".bin")
+    data_dict['edge_candidate'] = os.path.join(edge_folder, 'edge_candidate_'+ ov_se_jumpname + ".pickle")
     
     reg_eval_folder = os.path.join(gen_folder, 'reg_eval')
     os.makedirs(reg_eval_folder, exist_ok=True)
+    data_dict['gt_pred_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+se_jumpname+'.png')
+    data_dict['tpfpfntn_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+ov_se_jumpname+'.png')
+    data_dict['succ_fin_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+ov_se_jumpname+'.png')
+    data_dict['weird_pairs'] = os.path.join(reg_eval_folder, 'weird_edges_'+ ov_se_jumpname + ".pickle")
     
     os.makedirs(os.path.join(gen_folder, 'posegraph'), exist_ok=True)
-    data_dict['legacy_posegraph_b'] = os.path.join(gen_folder, 'posegraph', 'legacy_b_'+jumpname+'.json')  
-    data_dict['legacy_posegraph_a'] = os.path.join(gen_folder, 'posegraph', 'legacy_a_'+jumpname+'.json')  
-    data_dict['embed_posegraph_b'] = os.path.join(gen_folder, 'posegraph', 'embed_b_'+jumpname+'.json')  
-    data_dict['embed_posegraph_a'] = os.path.join(gen_folder, 'posegraph', 'embed_a_'+jumpname+'.json')  
+    data_dict['legacy_posegraph_b'] = os.path.join(gen_folder, 'posegraph', 'legacy_b_'+se_jumpname+'.json')  
+    data_dict['legacy_posegraph_a'] = os.path.join(gen_folder, 'posegraph', 'legacy_a_'+se_jumpname+'.json')  
+    data_dict['embed_posegraph_b'] = os.path.join(gen_folder, 'posegraph', 'embed_b_'+ov_se_jumpname+'.json')  
+    data_dict['embed_posegraph_a'] = os.path.join(gen_folder, 'posegraph', 'embed_a_'+ov_se_jumpname+'.json')  
     
-    se_jumpname = f"{config['start_index']}-{config['end_index']}_{config['frame_jump']}"
     overlap_folder = os.path.join(gen_folder, 'overlap')
     os.makedirs(overlap_folder, exist_ok=True)
     data_dict['gt_path'] = os.path.join(overlap_folder, 'gt_'+se_jumpname+f"_{config['gt_voxel_size']}.bin")
     data_dict['pred_path'] = os.path.join(overlap_folder, 'pred_'+se_jumpname+'.bin')
-    data_dict['tp_path'] = os.path.join(overlap_folder, 'tp_'+se_jumpname+'.bin')
-    data_dict['fp_path'] = os.path.join(overlap_folder, 'fp_'+se_jumpname+'.bin')
-    data_dict['fn_path'] = os.path.join(overlap_folder, 'fn_'+se_jumpname+'.bin')
+    data_dict['tp_path'] = os.path.join(overlap_folder, 'tp_'+ ov_se_jumpname + ".bin")
+    data_dict['fp_path'] = os.path.join(overlap_folder, 'fp_'+ ov_se_jumpname + ".bin")
+    data_dict['fn_path'] = os.path.join(overlap_folder, 'fn_'+ ov_se_jumpname + ".bin")
     
     # os.makedirs(os.path.join(gen_folder, ''), exist_ok=True)
     # data_dict['_path'] = os.path.join(gen_folder, '', jumpname+'.')    

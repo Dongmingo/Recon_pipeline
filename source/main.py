@@ -17,6 +17,7 @@ from utils.utility import set_dict, set_scene
 from utils.preprocess import preprocess
 from core.legacy import global_fragment
 from core.reconstruction import embed_recon
+from core.eval import eval_embed, eval_recon
 
 # from core.recon import reconstruction
 
@@ -38,17 +39,18 @@ def main(args):
                 preprocess(scene_path, args)
 
     
-    elif args.mode == 'legacy_recon':
+    elif args.mode == 'legacy':
         for scene_path in scene_list:
             data_dict, config = set_dict(scene_path, args)
-            
             global_fragment(data_dict, config)
     
-    elif args.mode == 'embed_recon':
+    elif args.mode == 'embed':
         for scene_path in scene_list:
             data_dict, config = set_dict(scene_path, args)
             
-            embed_recon(data_dict, config)
+            eval_embed(data_dict, config)
+            # embed_recon(data_dict, config)
+            eval_recon(data_dict, config)
             
     
 
@@ -56,8 +58,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # misc
-    parser.add_argument('--mode', type=str, default='recon',
-                        help='preprocess, recon')
+    parser.add_argument('--mode', type=str, default='embed',
+                        help='preprocess, legacy, embed')
     parser.add_argument('--loglevel', type=str, default='info',
                         help='debug, info, warning, error')
     parser.add_argument('-v', '--visualize', action='store_true',
@@ -113,8 +115,8 @@ if __name__ == '__main__':
                         help='ransac, fgr')
     
     # recon use embedding
-    parser.add_argument('--overlap_th', type=float, default=0.4,
-                        help='embeddings cosine similarity threshold to mine candidate, default 0.4')
+    parser.add_argument('--overlap_th', type=float, default=0.7,
+                        help='embeddings cosine similarity threshold to mine candidate, default 0.7')
     parser.add_argument('--overlap_buffer', type=float, default=0.1,
                         help='overlap buffer gap for |gt - pred|, default 0.1')
     
