@@ -7,6 +7,7 @@ import numpy as np
 import open3d as o3d
 
 import matplotlib.pyplot as plt
+import matplotlib.image as img
 from utils.camera import generate_camera, generate_line
 
 
@@ -14,6 +15,42 @@ def eval_embed(data_dict, config):
     extract_edges_from_embed(data_dict, config)
     vis_gt_pred(data_dict, config)
     vis_tpfpfntn(data_dict, config)
+    vis_weird_pairs(data_dict, config)
+    
+def vis_weird_pairs(data_dict, config):
+    weird_path = data_dict['weird_pairs']
+    with open(weird_path, 'rb')as f:
+        weird_pairs = pickle.load(f)
+    
+    logging.info(f"Total weird pairs {len(weird_pairs)} with gap : {config['weird_gap']}")
+    for (s, t, gt, pred) in weird_pairs:
+        save_path = data_dict['weird_vis_template'] % (s, t)
+        color_s = img.imread(data_dict['color'][s])
+        color_t = img.imread(data_dict['color'][t])
+        depth_s = img.imread(data_dict['depth'][s])
+        depth_t = img.imread(data_dict['depth'][t])
+        
+        fig = plt.figure(figsize=(12,9))
+        plt.suptitle(f"weird {s} - {t} pair, gt {gt}, pred {pred}")
+        ax1 = fig.add_subplot(221)
+        ax2 = fig.add_subplot(222)
+        ax3 = fig.add_subplot(223)
+        ax4 = fig.add_subplot(224)
+        ax1.title.set_text(f"color_{s}")
+        ax1.imshow(color_s)
+        ax2.title.set_text(f"color_{t}")
+        ax2.imshow(color_t)
+        ax3.title.set_text(f"depth_{s}")
+        ax3.imshow(depth_s)
+        ax4.title.set_text(f"depth_{t}")
+        ax4.imshow(depth_t)
+        if config['visualize']:
+            plt.show()
+        plt.savefig(save_path, dpi = 300)
+        plt.clf()
+
+        
+    
 
 def vis_gt_pred(data_dict, config):
     trash_nodes = data_dict['no_gt_info']
@@ -32,7 +69,7 @@ def vis_gt_pred(data_dict, config):
     weird_pairs = []
     for s in range(n_frames-1):
         for t in range(s+1, n_frames):            
-            if diff_mat[s,t] > 0.3:
+            if diff_mat[s,t] > config['weird_gap']:
                 if not (s in trash_nodes and t in trash_nodes):
                     weird_pairs.append((s,t, gt_mat[s, t], pred_mat[s,t]))
     

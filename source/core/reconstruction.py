@@ -39,9 +39,9 @@ def vis_succ_fin(data_dict, config):
     fig = plt.figure()
     ax1 = fig.add_subplot(121)
     ax2 = fig.add_subplot(122)  
-    ax1.title.set_title('succ_reg')
+    ax1.title.set_text('succ_reg')
     ax1.imshow(1-succ_mat)
-    ax2.title.set_title('final_remain')
+    ax2.title.set_text('final_remain')
     ax2.imshow(1-final_mat)
     if config['visualize']:
         plt.show()
@@ -105,7 +105,7 @@ def make_posegraph_embed(data_dict, config):
                 success_matrix[t, s] = success
         with open(data_dict['embed_succ_edge'], 'wb')as f:
             np.save(f, success_matrix)
-        logging.info(f"Pairwise Registration success matrix saved at {config['embed_succ_reg']}") 
+        logging.info(f"Pairwise Registration success matrix saved at {data_dict['embed_succ_edge']}") 
             
         o3d.io.write_pose_graph(save_path, pose_graph)
         logging.info(f"Posegraph before optimize saved at : {save_path}")

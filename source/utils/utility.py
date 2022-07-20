@@ -58,6 +58,7 @@ def set_dict(scene, args):
     
     config['overlap_th'] = args.overlap_th
     config['overlap_buffer'] = args.overlap_buffer
+    config['weird_gap'] = args.weird_gap
     
     logging.info("Setting data path")
     
@@ -128,9 +129,11 @@ def set_dict(scene, args):
     reg_eval_folder = os.path.join(gen_folder, 'reg_eval')
     os.makedirs(reg_eval_folder, exist_ok=True)
     data_dict['gt_pred_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+se_jumpname+'.png')
-    data_dict['tpfpfntn_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+ov_se_jumpname+'.png')
-    data_dict['succ_fin_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+ov_se_jumpname+'.png')
-    data_dict['weird_pairs'] = os.path.join(reg_eval_folder, 'weird_edges_'+ ov_se_jumpname + ".pickle")
+    data_dict['tpfpfntn_vis'] = os.path.join(reg_eval_folder, 'tpfpfntn_'+ov_se_jumpname+'.png')
+    data_dict['succ_fin_vis'] = os.path.join(reg_eval_folder, 'succ_fin_'+ov_se_jumpname+'.png')
+    data_dict['weird_pairs'] = os.path.join(reg_eval_folder, 'weird_edges_'+ se_jumpname + str(config['weird_gap'])+".pickle")
+    os.makedirs(os.path.join(reg_eval_folder, 'weird_vis'), exist_ok=True)
+    data_dict['weird_vis_template'] = reg_eval_folder+'/weird_vis/%05d-%05d.png'
     
     os.makedirs(os.path.join(gen_folder, 'posegraph'), exist_ok=True)
     data_dict['legacy_posegraph_b'] = os.path.join(gen_folder, 'posegraph', 'legacy_b_'+se_jumpname+'.json')  

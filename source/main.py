@@ -49,7 +49,7 @@ def main(args):
             data_dict, config = set_dict(scene_path, args)
             
             eval_embed(data_dict, config)
-            # embed_recon(data_dict, config)
+            embed_recon(data_dict, config)
             eval_recon(data_dict, config)
             
     
@@ -119,6 +119,8 @@ if __name__ == '__main__':
                         help='embeddings cosine similarity threshold to mine candidate, default 0.7')
     parser.add_argument('--overlap_buffer', type=float, default=0.1,
                         help='overlap buffer gap for |gt - pred|, default 0.1')
+    parser.add_argument('--weird_gap', type=float, default=0.4,
+                        help='weird pair mining gap for |gt - pred|, default 0.4')
     
 
     args = parser.parse_args()
