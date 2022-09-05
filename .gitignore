@@ -2,6 +2,7 @@
 *.obj
 *.sh
 *.pyc
+*.png
 
 shell/*
 log/*

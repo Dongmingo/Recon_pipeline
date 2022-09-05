@@ -2,13 +2,16 @@
 Utilities
 """
 import os
+os.environ['DISPLAY'] = ':1'
 import glob
 import logging
+import pickle
 
 import numpy as np
 import open3d as o3d
 
 from PIL import Image
+import matplotlib.pyplot as plt
 
 from utils.load_data import load_intrinsic, load_image_size, load_extrinsic
 
@@ -57,8 +60,10 @@ def set_dict(scene, args):
                                             reference_node=0)
     
     config['overlap_th'] = args.overlap_th
-    config['overlap_buffer'] = args.overlap_buffer
+    config['gt_overlap_th'] = args.gt_overlap_th
+    config['bin_size'] = args.bin_size
     config['weird_gap'] = args.weird_gap
+    config['good_gap'] = args.good_gap
     
     logging.info("Setting data path")
     
@@ -108,6 +113,7 @@ def set_dict(scene, args):
     
     se_jumpname = f"{config['start_index']}-{config['end_index']}_{config['frame_jump']}"
     ov_se_jumpname = se_jumpname+f"_{config['overlap_th']}"
+    ov_bin_se_jumpname = se_jumpname+f"_{config['gt_overlap_th']}"+f"_{config['bin_size']}"
     
     obj_folder = os.path.join(gen_folder, 'obj')
     os.makedirs(obj_folder, exist_ok=True)
@@ -131,7 +137,9 @@ def set_dict(scene, args):
     data_dict['gt_pred_vis'] = os.path.join(reg_eval_folder, 'gt_pred_'+se_jumpname+'.png')
     data_dict['tpfpfntn_vis'] = os.path.join(reg_eval_folder, 'tpfpfntn_'+ov_se_jumpname+'.png')
     data_dict['succ_fin_vis'] = os.path.join(reg_eval_folder, 'succ_fin_'+ov_se_jumpname+'.png')
-    data_dict['weird_pairs'] = os.path.join(reg_eval_folder, 'weird_edges_'+ se_jumpname + str(config['weird_gap'])+".pickle")
+    data_dict['weird_pairs'] = os.path.join(reg_eval_folder, 'weird_edges_'+ se_jumpname +'_'+ str(config['weird_gap'])+".pickle")
+    data_dict['good_pairs'] = os.path.join(reg_eval_folder, 'good_edges_'+ se_jumpname +'_'+ str(config['good_gap'])+".pickle")
+    data_dict['bins_save_path'] = os.path.join(reg_eval_folder, 'bins_'+ ov_bin_se_jumpname + ".pickle")
     os.makedirs(os.path.join(reg_eval_folder, 'weird_vis'), exist_ok=True)
     data_dict['weird_vis_template'] = reg_eval_folder+'/weird_vis/%05d-%05d.png'
     
@@ -216,3 +224,51 @@ def pred_visualization(file, save_path):
 def matrix_visualization(data_dict, config):
     gt_matrix_path = data_dict['gt_path']
     embedding_path = data_dict['embed_path']
+
+def make_decision_graph(scene_list, args):
+    total_diff = 0
+    bin_size = args.bin_size
+    bins = np.arange(0.0, 1.0, bin_size)
+    
+    total_dict = {'num_total_pairs' : 0,
+                  'num_ignore_pairs' : 0,
+                  'tp_bins': np.zeros(len(bins)),
+                  'fp_bins': np.zeros(len(bins)),
+                  'fn_bins': np.zeros(len(bins))}
+    
+    for scene_path in scene_list:
+        bins_path = glob.glob(os.path.join(scene_path, 'generated_data/reg_eval/bins_')+f"*-*_{args.frame_jump}_{args.gt_overlap_th}_{args.bin_size}.pickle")[0]
+        assert os.path.exists(bins_path), f"{bins_path} not exists"
+        
+        with open(bins_path, 'rb')as f:
+            bins_dict = pickle.load(f)
+            
+        total_dict['num_total_pairs'] += bins_dict['num_total_pairs']
+        total_dict['num_ignore_pairs'] += bins_dict['num_ignore_pairs']
+        total_dict['tp_bins'] += bins_dict['tp_bins']
+        total_dict['fp_bins'] += bins_dict['fp_bins']
+        total_dict['fn_bins'] += bins_dict['fn_bins']
+        total_diff += bins_dict['num_total_pairs'] * bins_dict['avg_diff']
+    
+    total_dict['avg_diff'] = total_diff / total_dict['num_total_pairs']
+    total_dict['recall_bins'] = total_dict['tp_bins'] / (total_dict['tp_bins'] + total_dict['fn_bins'])
+    total_dict['precision_bins'] = total_dict['tp_bins'] / (total_dict['tp_bins'] + total_dict['fp_bins'])
+    recall = total_dict['recall_bins']
+    precision = total_dict['precision_bins']
+    logging.info(f"TP bins :: {' '.join(map(str,total_dict['tp_bins']))}")
+    logging.info(f"FP bins :: {' '.join(map(str,total_dict['fp_bins']))}")
+    logging.info(f"FN bins :: {' '.join(map(str,total_dict['fn_bins']))}")
+    
+    
+    fig = plt.figure(figsize=(12,9))
+    plt.plot(recall, precision)
+    plt.xlabel('Recall')
+    plt.xlim([0.0, 1.0])
+    plt.ylabel('Precision')
+    plt.ylim([0.0, 1.0])
+    plt.title(f"PR curve at {args.gt_overlap_th}, scene : {len(scene_list)}, total_pairs : {total_dict['num_total_pairs']}, avg_diff : {total_dict['avg_diff']}")
+    if args.visualize:
+        plt.show()
+    plt.savefig(f"PR_curve_{args.gt_overlap_th}.png", dpi = 300)
+    plt.clf()
+        

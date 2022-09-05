@@ -13,9 +13,9 @@ from utils.camera import generate_camera, generate_line
 
 def eval_embed(data_dict, config):
     extract_edges_from_embed(data_dict, config)
-    vis_gt_pred(data_dict, config)
-    vis_tpfpfntn(data_dict, config)
-    vis_weird_pairs(data_dict, config)
+    # vis_gt_pred(data_dict, config)
+    # vis_tpfpfntn(data_dict, config)
+    # vis_weird_pairs(data_dict, config)
     
 def vis_weird_pairs(data_dict, config):
     weird_path = data_dict['weird_pairs']
@@ -49,8 +49,6 @@ def vis_weird_pairs(data_dict, config):
         plt.savefig(save_path, dpi = 300)
         plt.clf()
 
-        
-    
 
 def vis_gt_pred(data_dict, config):
     trash_nodes = data_dict['no_gt_info']
@@ -67,14 +65,20 @@ def vis_gt_pred(data_dict, config):
         pred_mat = np.load(f)
     diff_mat = np.abs(pred_mat - gt_mat)
     weird_pairs = []
+    good_pairs = []
     for s in range(n_frames-1):
         for t in range(s+1, n_frames):            
-            if diff_mat[s,t] > config['weird_gap']:
-                if not (s in trash_nodes and t in trash_nodes):
+            if not (s in trash_nodes and t in trash_nodes):
+                if diff_mat[s,t] > config['weird_gap']:
                     weird_pairs.append((s,t, gt_mat[s, t], pred_mat[s,t]))
+                elif diff_mat[s,t] < config['good_gap']:
+                    good_pairs.append((s,t, gt_mat[s, t], pred_mat[s,t]))
     
     with open(data_dict['weird_pairs'], 'wb') as f:
         pickle.dump(weird_pairs, f)
+    
+    with open(data_dict['good_pairs'], 'wb')as f:
+        pickle.dump(good_pairs, f)
     
     gt_mat[trash_mask] = 1
     pred_mat[trash_mask] = 1
@@ -94,6 +98,7 @@ def vis_gt_pred(data_dict, config):
         plt.show()
     plt.savefig(gt_pred_path, dpi = 300)
     plt.clf()
+
 
 def vis_tpfpfntn(data_dict, config):
     trash_nodes = data_dict['no_gt_info']
@@ -149,17 +154,40 @@ def extract_edges_from_embed(data_dict, config):
     gt_path = data_dict['gt_path']
     with open(gt_path, 'rb')as f:
         gt_ov_mat = np.load(f)
+        
+    n = config['n_frames'] - len(data_dict['no_gt_info'])
+    total = n * (n-1) / 2
+    ig = config['n_frames'] * (config['n_frames']-1) / 2 - total
+    if len(data_dict['no_gt_info']) != 0:
+        pred_ov_mat[np.array(data_dict['no_gt_info']),:] = -1.0
+        pred_ov_mat[:,np.array(data_dict['no_gt_info'])] = -1.0
+    mask = (gt_ov_mat <1).astype(int) * (pred_ov_mat >= 0).astype(int)
+    abs_diff = np.abs(pred_ov_mat - gt_ov_mat)
+    avg_diff = np.sum(abs_diff[mask==1]) / (total * 2)
+    
+    bin_size = config['bin_size']
+    bins = np.arange(0.0, 1.0, bin_size)
+    tp_bins, fp_bins, fn_bins = np.zeros(len(bins)), np.zeros(len(bins)), np.zeros(len(bins))
     
     edge_pairs = []
     edge_path = data_dict['edge_candidate']
     overlap_th = config['overlap_th']
-    pred_mask = pred_ov_mat > overlap_th
-    gt_mask = gt_ov_mat > overlap_th - config['overlap_buffer']
+    pred_mask = pred_ov_mat >= overlap_th
+    gt_mask = gt_ov_mat >= config['gt_overlap_th']
     tp_mat = np.eye(config['n_frames'])
     fp_mat = np.zeros((config['n_frames'],config['n_frames']))
     fn_mat = np.zeros((config['n_frames'],config['n_frames']))
     for s in range(config['n_frames']-1):
         for t in range(s+1, config['n_frames']):
+            if s not in data_dict['no_gt_info'] and t not in data_dict['no_gt_info']:
+                th_index = int(pred_ov_mat[s,t]/bin_size)+1
+                if pred_ov_mat[s,t] ==1:
+                    th_index = 20
+                if gt_ov_mat[s,t] >= config['gt_overlap_th']:
+                    tp_bins += np.hstack((np.ones(th_index),np.zeros(len(bins)-th_index)))
+                    fn_bins += np.hstack((np.zeros(th_index),np.ones(len(bins)-th_index)))
+                else:
+                    fp_bins += np.hstack((np.ones(th_index),np.zeros(len(bins)-th_index)))
             if pred_mask[s,t]:
                 edge_pairs.append((s,t))
                 if gt_mask[s,t]:
@@ -169,6 +197,22 @@ def extract_edges_from_embed(data_dict, config):
             else:
                 if gt_mask[s,t]:
                     fn_mat[s,t], fn_mat[t,s] = 1, 1
+    
+    recall_bins = tp_bins / (tp_bins + fn_bins)
+    precision_bins = tp_bins / (tp_bins + fp_bins) 
+        
+    bins_dict = {'scene_path' : data_dict['scene_path'],
+                  'num_total_pairs' : total,
+                  'num_ignore_pairs' : ig,
+                  'avg_diff' : avg_diff,
+                  'tp_bins': tp_bins,
+                  'fp_bins': fp_bins,
+                  'fn_bins': fn_bins,
+                  'recall_bins': recall_bins,
+                  'precision_bins': precision_bins}
+    
+    with open(data_dict['bins_save_path'], 'wb')as f:
+        pickle.dump(bins_dict, f)
                     
     with open(data_dict['tp_path'], 'wb')as f:
         np.save(f, tp_mat)

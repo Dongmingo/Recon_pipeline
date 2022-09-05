@@ -13,7 +13,7 @@ import argparse
 
 import open3d as o3d
 
-from utils.utility import set_dict, set_scene
+from utils.utility import set_dict, set_scene, make_decision_graph
 from utils.preprocess import preprocess
 from core.legacy import global_fragment
 from core.reconstruction import embed_recon
@@ -49,9 +49,11 @@ def main(args):
             data_dict, config = set_dict(scene_path, args)
             
             eval_embed(data_dict, config)
-            embed_recon(data_dict, config)
-            eval_recon(data_dict, config)
+            # embed_recon(data_dict, config)
+            # eval_recon(data_dict, config)
             
+    elif args.mode == 'decision_graph':
+        make_decision_graph(scene_list, args)
     
 
 if __name__ == '__main__':
@@ -117,10 +119,14 @@ if __name__ == '__main__':
     # recon use embedding
     parser.add_argument('--overlap_th', type=float, default=0.7,
                         help='embeddings cosine similarity threshold to mine candidate, default 0.7')
-    parser.add_argument('--overlap_buffer', type=float, default=0.1,
-                        help='overlap buffer gap for |gt - pred|, default 0.1')
-    parser.add_argument('--weird_gap', type=float, default=0.4,
-                        help='weird pair mining gap for |gt - pred|, default 0.4')
+    parser.add_argument('--gt_overlap_th', type=float, default=0.3,
+                        help='ground truth overlap boundary, default 0.3')
+    parser.add_argument('--bin_size', type=float, default=0.05,
+                        help='bin size for making Decision Graph , default 0.05')
+    parser.add_argument('--weird_gap', type=float, default=0.5,
+                        help='weird pair mining gap for |gt - pred|, default 0.5')
+    parser.add_argument('--good_gap', type=float, default=0.05,
+                        help='weird pair mining gap for |gt - pred|, default 0.05')
     
 
     args = parser.parse_args()
