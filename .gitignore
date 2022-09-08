@@ -3,6 +3,7 @@
 *.sh
 *.pyc
 *.png
+*.pth
 
 shell/*
 log/*
