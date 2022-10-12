@@ -25,6 +25,7 @@ def main(args):
     print(args)
     
     scene_list = set_scene(args.input_dir)
+    # scene_list = [args.input_dir]
     
     if args.mode == 'preprocess':
         if args.multi_thread:
@@ -83,12 +84,12 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='results/')
 
     # preprocess config
-    parser.add_argument('--gt_voxel_size', type=float, default=0.05,
+    parser.add_argument('--gt_voxel_size', type=float, default=0.02,
                         help='Minkowski Quantize gt voxel_size')
     
     # registration config
     parser.add_argument('--datatype', type=str, default="ScanNet",
-                        help='scanNet')
+                        help='ScanNet')
     parser.add_argument('--frame_jump', type=int, default=30,
                         help='frame jump, default 30')
     parser.add_argument('--keyframe_rate', type=int, default=1,
@@ -97,7 +98,7 @@ if __name__ == '__main__':
                         help='start frame index, default 0')
     parser.add_argument('--end_index', type=int, default=0,
                         help='end frame index, default(len(total_f)-1)')
-    parser.add_argument('--voxel_size', type=float, default=0.01,
+    parser.add_argument('--voxel_size', type=float, default=0.02,
                         help='reconstruction resolution')
     parser.add_argument('--depth_trunc', type=float, default=5.0,
                         help='maximum depth range default=5.0m')

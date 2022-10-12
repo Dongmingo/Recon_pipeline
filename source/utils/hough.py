@@ -21,7 +21,7 @@ class DHVR:
         device,
         feature_extractor,
         refine_model,
-        voxel_size=0.05,
+        voxel_size=0.02,
         num_trial=100000,
         smoothing=False,
         kernel_size=3,

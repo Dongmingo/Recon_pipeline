@@ -18,7 +18,7 @@ from utils.load_data import load_intrinsic, load_image_size, load_extrinsic
 
 def set_dict(scene, args):
     input_dir = scene
-    logging.info(f"Setting Configureation for reconstruct scene : {input_dir}")    
+    logging.info(f"Setting Configuration for reconstruct scene : {input_dir}")    
     config = {}
     config['python_multi_threading'] = args.multi_thread
     config['debug_mode'] = args.debug
@@ -105,11 +105,12 @@ def set_dict(scene, args):
         os.makedirs(output_folder, exist_ok=True)
         
         data_dict['output'] = output_folder
-    
-    data_dict['embed_path'] = os.path.join(gen_folder, 'embeddings.bin')
-    with open(data_dict['embed_path'], 'rb')as f:
-        embed_t = np.load(f)
-    data_dict['embeddings'] = embed_t[data_dict['index']]
+        
+    if not args.mode == 'preprocess':
+        data_dict['embed_path'] = os.path.join(gen_folder, 'embeddings.bin')
+        with open(data_dict['embed_path'], 'rb')as f:
+            embed_t = np.load(f)
+        data_dict['embeddings'] = embed_t[data_dict['index']]
     
     se_jumpname = f"{config['start_index']}-{config['end_index']}_{config['frame_jump']}"
     ov_se_jumpname = se_jumpname+f"_{config['overlap_th']}"

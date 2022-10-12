@@ -13,8 +13,8 @@ from utils.camera import generate_camera, generate_line
 
 def eval_embed(data_dict, config):
     extract_edges_from_embed(data_dict, config)
-    # vis_gt_pred(data_dict, config)
-    # vis_tpfpfntn(data_dict, config)
+    vis_gt_pred(data_dict, config)
+    vis_tpfpfntn(data_dict, config)
     # vis_weird_pairs(data_dict, config)
     
 def vis_weird_pairs(data_dict, config):
